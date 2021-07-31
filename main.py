@@ -123,53 +123,52 @@ def check(sess_id: str, session: requests.session):
     for key, val in d.items():
         if val:
             flag = False
-            log("ServerID: %s Renew Failed!" % key)
-
+            print("ServerID: %s Renew Failed!" % key)
+            notify_user(text="ServerID: %s Renew Failed!" % key)
     if flag:
-        log("ALL Work Done! Enjoy")
+        print("ALL Work Done! Enjoy")
 
-def telegram():
-    data = (
-        ('chat_id', TG_USER_ID),
-        ('text', 'EUserv续费日志\n\n' + desp)
-    )
-    response = requests.post('https://' + TG_API_HOST + '/bot' + TG_BOT_TOKEN + '/sendMessage', data=data)
-    if response.status_code != 200:
-        print('Telegram Bot 推送失败')
-    else:
-        print('Telegram Bot 推送成功')
+def notify_user(text: str):
+    if not TG_BOT_TOKEN or not TG_USER_ID:
+        exit(0)
+    text = "EUserv_extend：" + text
+    rs = requests.post(url="https://api.telegram.org/bot%s/sendMessage" % TG_BOT_TOKEN, json=dict(chat_id=TG_USER_ID, text=text)).json()
+    assert rs["ok"], rs
+
 
 if __name__ == "__main__":
     if not USERNAME or not PASSWORD:
-        log("你没有添加任何账户")
+        print("你没有添加任何账户")
+        notify_user(text="你没有添加任何账户")
         exit(1)
     user_list = USERNAME.strip().split()
     passwd_list = PASSWORD.strip().split()
     if len(user_list) != len(passwd_list):
-        log("The number of usernames and passwords do not match!")
+        print("The number of usernames and passwords do not match!")
+        notify_user(text="The number of usernames and passwords do not match!")
         exit(1)
     for i in range(len(user_list)):
         print('*' * 30)
-        log("正在续费第 %d 个账号" % (i + 1))
+        print("正在续费第 %d 个账号" % (i + 1))
         sessid, s = login(user_list[i], passwd_list[i])
         if sessid == '-1':
-            log("第 %d 个账号登陆失败，请检查登录信息" % (i + 1))
-
+            print("第 %d 个账号登陆失败，请检查登录信息" % (i + 1))
+            notify_user(text="第 %d 个账号登陆失败，请检查登录信息" % (i + 1))
             continue
         SERVERS = get_servers(sessid, s)
-        log("检测到第 {} 个账号有 {} 台VPS，正在尝试续期".format(i + 1, len(SERVERS)))
+        print("检测到第 {} 个账号有 {} 台VPS，正在尝试续期".format(i + 1, len(SERVERS)))
         for k, v in SERVERS.items():
             if v:
                 if not renew(sessid, s, passwd_list[i], k):
-                    log("ServerID: %s Renew Error!" % k)
+                    print("ServerID: %s Renew Error!" % k)
+                    notify_user(text="ServerID: %s Renew Error!" % k)
                 else:
-                    log("ServerID: %s has been successfully renewed!" % k)
+                    print("ServerID: %s has been successfully renewed!" % k)
+                    notify_user(text="ServerID: %s has been successfully renewed!" % k)
             else:
-                log("ServerID: %s does not need to be renewed" % k)
+                print("ServerID: %s does not need to be renewed" % k)
+                notify_user(text="ServerID: %s does not need to be renewed!" % k)
         time.sleep(15)
         check(sessid, s)
         time.sleep(5)
-
-    TG_BOT_TOKEN and TG_USER_ID and TG_API_HOST and telegram()
-
     print('*' * 30)
