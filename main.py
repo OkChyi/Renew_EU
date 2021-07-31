@@ -5,14 +5,26 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-USERNAME = os.getenv("USERNAME")
-PASSWORD = os.getenv("PASSWORD")
-TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
-TG_USER_ID = os.getenv("TG_USER_ID")
+USERNAME = os.environ["USERNAME"]
+PASSWORD = os.environ["PASSWORD"]
+
+TG_BOT_TOKEN = os.environ.get('TG_BOT_TOKEN')
+TG_USER_ID = os.environ["TG_USER_ID"] 
+TG_API_HOST = ''
+
 PROXIES = {
     "http": "http://127.0.0.1:10808",
     "https": "http://127.0.0.1:10808"
 }
+
+desp = ''  # 空值
+
+
+def log(info: str):
+    print(info)
+    global desp
+    desp = desp + info + '\n\n'
+
 
 def login(username: str, password: str) -> (str, requests.session):
     headers = {
@@ -40,7 +52,7 @@ def login(username: str, password: str) -> (str, requests.session):
     f = session.post(url, headers=headers, data=login_data)
     f.raise_for_status()
 
-    if f.text.find('Hello') == -1:
+    if f.text.find('Hello') == -1 and f.text.find('Confirm or change your customer data here') == -1:
         return '-1', session
     return sess_id, session
 
@@ -112,53 +124,53 @@ def check(sess_id: str, session: requests.session):
     for key, val in d.items():
         if val:
             flag = False
-            print("ServerID: %s Renew Failed!" % key)
-            notify_user(text="ServerID: %s Renew Failed!" % key)
+            log("ServerID: %s Renew Failed!" % key)
+
     if flag:
-        print("ALL Work Done! Enjoy")
+        log("ALL Work Done! Enjoy")
 
-
-def notify_user(text: str):
-    if not TG_BOT_TOKEN or not TG_USER_ID:
-        exit(0)
-    text = "EUserv_extend：" + text
-    rs = requests.post(url="https://api.telegram.org/bot%s/sendMessage" % TG_BOT_TOKEN, json=dict(chat_id=TG_USER_ID, text=text)).json()
-    assert rs["ok"], rs
-
+def telegram():
+    data = (
+        ('chat_id', TG_USER_ID),
+        ('text', 'EUserv续费日志\n\n' + desp)
+    )
+    response = requests.post('https://' + TG_API_HOST + '/bot' + TG_BOT_TOKEN + '/sendMessage', data=data)
+    if response.status_code != 200:
+        print('Telegram Bot 推送失败')
+    else:
+        print('Telegram Bot 推送成功')
 
 if __name__ == "__main__":
     if not USERNAME or not PASSWORD:
-        print("你没有添加任何账户")
-        notify_user(text="你没有添加任何账户")
+        log("你没有添加任何账户")
         exit(1)
     user_list = USERNAME.strip().split()
     passwd_list = PASSWORD.strip().split()
     if len(user_list) != len(passwd_list):
-        print("The number of usernames and passwords do not match!")
-        notify_user(text="The number of usernames and passwords do not match!")
+        log("The number of usernames and passwords do not match!")
         exit(1)
     for i in range(len(user_list)):
         print('*' * 30)
-        print("正在续费第 %d 个账号" % (i + 1))
+        log("正在续费第 %d 个账号" % (i + 1))
         sessid, s = login(user_list[i], passwd_list[i])
         if sessid == '-1':
-            print("第 %d 个账号登陆失败，请检查登录信息" % (i + 1))
-            notify_user(text="第 %d 个账号登陆失败，请检查登录信息" % (i + 1))
+            log("第 %d 个账号登陆失败，请检查登录信息" % (i + 1))
+
             continue
         SERVERS = get_servers(sessid, s)
-        print("检测到第 {} 个账号有 {} 台VPS，正在尝试续期".format(i + 1, len(SERVERS)))
+        log("检测到第 {} 个账号有 {} 台VPS，正在尝试续期".format(i + 1, len(SERVERS)))
         for k, v in SERVERS.items():
             if v:
                 if not renew(sessid, s, passwd_list[i], k):
-                    print("ServerID: %s Renew Error!" % k)
-                    notify_user(text="ServerID: %s Renew Error!" % k)
+                    log("ServerID: %s Renew Error!" % k)
                 else:
-                    print("ServerID: %s has been successfully renewed!" % k)
-                    notify_user(text="ServerID: %s has been successfully renewed!" % k)
+                    log("ServerID: %s has been successfully renewed!" % k)
             else:
-                print("ServerID: %s does not need to be renewed" % k)
-                notify_user(text="ServerID: %s does not need to be renewed!" % k)
+                log("ServerID: %s does not need to be renewed" % k)
         time.sleep(15)
         check(sessid, s)
         time.sleep(5)
+
+    TG_BOT_TOKEN and TG_USER_ID and TG_API_HOST and telegram()
+
     print('*' * 30)
