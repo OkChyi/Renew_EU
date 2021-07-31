@@ -5,11 +5,10 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-USERNAME = os.environ["USERNAME"]
-PASSWORD = os.environ["PASSWORD"]
-
-TG_BOT_TOKEN = os.environ.get('TG_BOT_TOKEN')
-TG_USER_ID = os.environ["TG_USER_ID"] 
+USERNAME = os.getenv("USERNAME")
+PASSWORD = os.getenv("PASSWORD")
+TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
+TG_USER_ID = os.getenv("TG_USER_ID")
 TG_API_HOST = ''
 
 PROXIES = {
