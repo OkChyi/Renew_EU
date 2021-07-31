@@ -16,15 +16,6 @@ PROXIES = {
     "https": "http://127.0.0.1:10808"
 }
 
-desp = ''  # 空值
-
-
-def log(info: str):
-    print(info)
-    global desp
-    desp = desp + info + '\n\n'
-
-
 def login(username: str, password: str) -> (str, requests.session):
     headers = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
